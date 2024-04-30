@@ -1,0 +1,6 @@
+torch==2.0.1
+torchvision==0.15.2
+transformers==4.38.1
+gradio==4.26.0
+opencv-python==4.8.1.78
+opencv-python-headless==4.8.1.78
