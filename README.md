@@ -2,10 +2,11 @@
 This repository releases code of paper [**Visually Guided Generative Text-Layout Pre-training for Document Intelligence** (NAACL-2024)](https://arxiv.org/abs/2403.16516).
 
 
-We provide the pre-trained checkpoint ViTLP-medium (380M) that can natively perform text localization and recognition, i.e., OCR. The ViTLP checkpoint weight is released at [Huggingface](https://huggingface.co/veason/ViTLP-medium/tree/main). Clone (or download) ViTLP checkpoint weight to the directory `./ckpts/ViTLP-medium`.
+We provide the pre-trained checkpoint **ViTLP-medium** (380M). The pre-trained ViTLP model can natively perform OCR text localization and recognition, which is accessible at [Huggingface](https://huggingface.co/veason/ViTLP-medium/tree/main). Clone (or download) ViTLP checkpoint weight to the directory `./ckpts/ViTLP-medium`.
 
 <pre><code>pip install -r requirements.txt
 git clone ViTLP && cd ViTLP
+
 # Clone ViTLP-medium checkpoint
 mkdir ckpts
 git clone https://huggingface.co/veason/ViTLP-medium ckpts</code></pre>
