@@ -8,8 +8,8 @@ We provide the pre-trained checkpoint **ViTLP-medium** (380M). The pre-trained V
 git clone ViTLP && cd ViTLP
 
 # Clone ViTLP-medium checkpoint
-mkdir ckpts
-git clone https://huggingface.co/veason/ViTLP-medium ckpts</code></pre>
+mkdir -p ckpts/ViTLP-medium
+git clone https://huggingface.co/veason/ViTLP-medium ckpts/ViTLP-medium</code></pre>
 
 
 # Demo
