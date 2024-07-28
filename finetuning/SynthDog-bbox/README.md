@@ -6,22 +6,22 @@ Besides ViTLP, we also provide a tool to generate synthetic documents with word-
 ## Resource Preparation
 - For text corpus, we leveraged [English Wikipedia Corpus](https://dumps.wikimedia.org/enwiki/) to generate ViTLP pre-training data.
 
-- For text fonts, we used 10+ fonts to improve the content diversity of ViTLP pre-training data. See `resources/font`.
+- For text fonts, we used 10+ fonts to improve the content diversity of ViTLP pre-training data. See `./resources/font`.
 
-- For document paper background, we used 1000-class ImageNet and MS COCO images as background to improve the content diversity of ViTLP pre-training data. See `resources/background`.
+- For document paper background, we used 1000-class ImageNet and MS COCO images as background to improve the content diversity of ViTLP pre-training data. See `./resources/background`.
 
-- For generation config, we set the high-resolution document parameters at `config.yaml`.
+- For generation config, we set the high-resolution document parameters at `./config.yaml`.
 
 - For package requirements, `pip install synthtiger Pillow==9.5.0`.
 
 
 
 ## Usage
-For example, to render 10 documents with bboxes (run `generate_data.sh`):
+For example, to render 10 documents with bboxes (run `./generate_data.sh`):
 
 <pre><code>synthtiger -o synthetic_images -c 10 -v template.py SynthDoG config.yaml</code></pre>
 
-The generated images and corresponding metadata are at `synthetic_images`.
+The generated images and corresponding metadata are at `./synthetic_images`.
 
 
 
@@ -44,9 +44,9 @@ The generated images and corresponding metadata are at `synthetic_images`.
 - Preprocess the metadata for training ViTLP:
   <pre><code>python preprocess.py</code></pre>
 
-  The preprocessed readable JSON-format data and image are at [preprocessed_data/data](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/SynthDog-bbox/preprocessed_data/data) and [preprocessed_data/images](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/SynthDog-bbox/preprocessed_data/images).
+  The preprocessed readable JSON-format data and image are at [./preprocessed_data/data](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/SynthDog-bbox/preprocessed_data/data) and [./preprocessed_data/images](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/SynthDog-bbox/preprocessed_data/images).
 
-  Bounding box visualization, e.g., [preprocessed_data/visualization/image_0.jpg](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/SynthDog-bbox/preprocessed_data/visualization/image_0.jpg):
+  Bounding box visualization, e.g., [./preprocessed_data/visualization/image_0.jpg](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/SynthDog-bbox/preprocessed_data/visualization/image_0.jpg):
   ![](preprocessed_data/visualization/image_0.jpg)
 
 
