@@ -121,7 +121,7 @@ def process_text_bbox_data(metadata_dir, image_dir, preprocessed_data_dir):
 
 if __name__ == '__main__':
     process_text_bbox_data(
-        metadata_dir = 'SynthDog-bbox/preprocessed_data/data',
-        image_dir = 'SynthDog-bbox/preprocessed_data/images',
-        preprocessed_data_dir = 'text_bbox_data'
+        metadata_dir = './SynthDog-bbox/preprocessed_data/data',
+        image_dir = './SynthDog-bbox/preprocessed_data/images',
+        preprocessed_data_dir = './text_bbox_data'
     )
