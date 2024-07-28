@@ -1,0 +1,28 @@
+{
+    "steps_per_print": 100,
+    "gradient_clipping": 1,
+    "gradient_accumulation_steps": 1,
+    "prescal_gradients": false,
+    "fp16": {
+        "enabled": true,
+        "fp16_master_weight_and_grads": false,
+        "loss_scale": 0,
+        "loss_scale_window": 500,
+        "hysteresis": 2,
+        "min_loss_scale": 1,
+        "initial_scale_power": 15
+    },
+    "bf16": {
+        "enabled": false
+    },
+    "wall_clock_breakdown": false,
+    "train_micro_batch_size_per_gpu": 1,
+    "zero_optimization": {
+        "stage": 2,
+        "overlap_comm": true,
+        "contiguous_gradients": true,
+        "sub_group_size": 1e9,
+        "reduce_bucket_size": "auto"
+    },
+    "dump_state": false
+}

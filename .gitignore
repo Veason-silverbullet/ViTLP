@@ -6,3 +6,5 @@ nohup.*
 ./ckpts/*
 ./decode_output/
 ./decode_output/*
+./finetuning/outputs/
+./finetuning/outputs/*

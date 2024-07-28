@@ -17,7 +17,7 @@ With the checkpoint and dependencies set (see requirements.txt), run the demo as
 
 <pre><code>python ocr.py</code></pre>
 
-Upload a document image and have a shot
+Upload a document image and have a shot.
 
 ![](misc/ocr-demo-1.png)
 
@@ -26,6 +26,12 @@ Upload a document image and have a shot
 See detailed inference code at `decode.py` and run batch decode by
 
 <pre><code>bash decode.sh</code></pre>
+
+
+# Fintuning ViTLP
+Please refer to [finetuning](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning) for finetuning ViTLP.
+
+We also release a tool for synthesizing documents with grounding-box metadata at [finetuning/SynthDog-bbox](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/SynthDog-bbox).
 
 
 # Preset FAQ

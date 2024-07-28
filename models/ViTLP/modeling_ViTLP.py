@@ -559,7 +559,7 @@ class VitlpDecoder(VitlpPretrainedModel):
 
 class ViTLPModel(ViTLPPreTrainedModel):
     def __init__(self, config):
-        super().__init__(config)
+        super().__init__(copy.deepcopy(config))
         self.encoder = VitlpEncoder(copy.deepcopy(config))
         self.decoder = VitlpDecoder(copy.deepcopy(config))
 
@@ -572,8 +572,8 @@ class ViTLPModel(ViTLPPreTrainedModel):
 
 class ViTLPForPreTraining(ViTLPPreTrainedModel):
     def __init__(self, config):
-        super().__init__(config)
-        self.vitlp = ViTLPModel(config)
+        super().__init__(copy.deepcopy(config))
+        self.vitlp = ViTLPModel(copy.deepcopy(config))
         self.loss_fct = CrossEntropyLoss()
         self.post_init()
         loaded_parameter_num = 0
@@ -588,12 +588,13 @@ class ViTLPForPreTraining(ViTLPPreTrainedModel):
             self.vitlp, loaded_vit_parameters = load_pretrained_vit(self.vitlp, config.pretrained_vit_path, config.encoder_layers, config.image_height // config.patch_size, config.image_width // config.patch_size)
             loaded_parameter_num += len(loaded_vit_parameters)
             loaded_parameters |= loaded_vit_parameters
-        vitlp_parameter_num = len(list(p for p in self.vitlp.parameters()))
-        print('Total parameter groups in ViTLP vs. loaded parameter groups in backbone models : %d vs. %d' % (vitlp_parameter_num, loaded_parameter_num))
-        if vitlp_parameter_num > loaded_parameter_num:
-            for name, p in self.vitlp.named_parameters():
-                if name not in loaded_parameters:
-                    print(name + ' is not loaded')
+        if config.load_bart or config.load_vit:
+            vitlp_parameter_num = len(list(p for p in self.vitlp.parameters()))
+            print('Total parameter groups in ViTLP vs. loaded parameter groups in backbone models : %d vs. %d' % (vitlp_parameter_num, loaded_parameter_num))
+            if vitlp_parameter_num > loaded_parameter_num:
+                for name, p in self.vitlp.named_parameters():
+                    if name not in loaded_parameters:
+                        print(name + ' is not loaded')
         # assert (self.vitlp.decoder.lm_head.weight - self.vitlp.decoder.word_embeddings.weight).abs().max() < 1e-8, str((self.vitlp.decoder.lm_head.weight - self.vitlp.decoder.word_embeddings.weight).abs().max())
         self.bin_size = config.bin_size
         self.LOCATE_ID = 50265 # hard-code confirmation

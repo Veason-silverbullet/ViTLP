@@ -36,7 +36,7 @@ class ViTFeatureExtractor(FeatureExtractionMixin, ImageFeatureExtractionMixin):
 
 
 class PretrainDataset(Dataset):
-    def __init__(self, dataset_path, image_dir, config, rank, mode):
+    def __init__(self, dataset_path, image_dir, config, mode, rank=None):
         self.rank = rank
         self.mode = mode
         assert self.mode in ['train', 'validation']
@@ -48,13 +48,13 @@ class PretrainDataset(Dataset):
         self.image_map = []
         self.LOCATE_ID = config.vocab_size - 2
         assert self.LOCATE_ID == 50265 # hard-code confirmation
-        if self.mode == 'train':
+        if self.rank is not None:
             with open(os.path.join(dataset_path, 'mapping-%d.txt' % self.rank), 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
                     if len(line) > 0:
                         image, prefix = line.split('\t')
-                        self.image_map.append((os.path.join(prefix + '_' + str(self.rank), image)).encode())
+                        self.image_map.append((os.path.join(prefix + '_' + str(self.rank), image)))
                 self.num = len(self.image_map)
             with open(os.path.join(dataset_path, 'localization-tokens-%d-%d.npy' % (self.rank, config.seq_length)), 'rb') as f:
                 self.tokens = np.load(f).astype(np.int32)
@@ -77,16 +77,16 @@ class PretrainDataset(Dataset):
         else:
             with open(os.path.join(dataset_path, 'mapping.txt'), 'r', encoding='utf-8') as f:
                 for line in f:
-                    line = line.strip()
-                    if len(line) > 0:
-                        image, prefix = line.split('\t')
-                        self.image_map.append((os.path.join(prefix, image)).encode())
+                    image = line.strip()
+                    if len(image) > 0:
+                        self.image_map.append(image)
                 self.num = len(self.image_map)
             with open(os.path.join(dataset_path, 'localization-tokens-%d.npy' % config.seq_length), 'rb') as f:
                 self.tokens = np.load(f).astype(np.int32)
                 assert self.num == self.tokens.shape[0], 'Sizes mismatch in localization-tokens-%d.npy, %d vs. %d' % (config.seq_length, self.num, self.tokens.shape[0]) # sanity check
             with open(os.path.join(dataset_path, 'localization-bboxes-%d.npy' % config.seq_length), 'rb') as f:
-                self.bboxes = np.load(f).astype(np.int32)
+                self.bboxes = np.load(f) # np.int16
+                assert self.bboxes.dtype == np.int16
                 assert self.num == self.bboxes.shape[0], 'Sizes mismatch in localization-bboxes-%d.npy, %d vs. %d' % (config.seq_length, self.num, self.bboxes.shape[0]) # sanity check
             with open(os.path.join(dataset_path, 'localization-token_types-%d.npy' % config.seq_length), 'rb') as f:
                 token_types = np.load(f).astype(np.int8)
@@ -103,42 +103,37 @@ class PretrainDataset(Dataset):
     def __len__(self):
         return self.num
 
-    def __getitem__(self, idx_):
-        for offset in range(1024):
-            try:
-                idx = idx_ if offset == 0 else (idx_ + offset) % self.num
-                tokens = self.tokens[idx]
-                decoder_input_ids = tokens[:-1]
-                segments = self.segments[idx]
-                ignore_tokens = self.ignore_tokens[idx]
-                labels = tokens[1:]
-                labels = np.where((labels != self.PAD_TOKEN_ID) & segments, labels, self.IGNORE_INDEX)
-                labels = np.where(ignore_tokens, self.IGNORE_INDEX, labels).astype(np.int64)
-                bboxes = self.bboxes[idx].astype(np.int32)
-                decoder_input_bboxes = bboxes[:-1]
-                bboxes = bboxes[1:]
-                bboxes = np.where((bboxes != self.PAD_BBOX_TOKEN_ID) & np.expand_dims(segments, axis=1), bboxes, self.IGNORE_INDEX).astype(np.int64) # this is very crucial for a trick `bbox_input_ids = bboxes[:, :, :3].to(torch.int32)` in modeling_ViTLP.py
-                n1 = (labels == self.LOCATE_ID).astype(np.float32).sum()
-                n2 = (labels != self.IGNORE_INDEX).astype(np.float32).sum()
-                if self.mode == 'train':
-                    sample = {
-                        'image': self.vitFeatureExtractor(Image.open(os.path.join(self.image_dir, self.image_map[idx].decode())).convert('RGB')),
-                        'decoder_input_ids': decoder_input_ids,
-                        'decoder_input_bboxes': decoder_input_bboxes,
-                        'labels': labels,
-                        'bboxes': bboxes,
-                        'n1': n1,
-                        'n2': n2
-                    }
-                else:
-                    sample = {
-                        'image': self.vitFeatureExtractor(Image.open(os.path.join(self.image_dir, self.image_map[idx].decode())).convert('RGB')),
-                        'decoder_input_ids': decoder_input_ids,
-                        'decoder_input_bboxes': decoder_input_bboxes,
-                        'labels': labels,
-                        'bboxes': bboxes,
-                        'token_types': self.token_types[idx]
-                    }
-                return sample
-            except Exception as e:
-                print(f'Dataloader __getitem__ error: {e}, image_file: {self.image_map[idx]}')
+    def __getitem__(self, idx):
+        tokens = self.tokens[idx]
+        decoder_input_ids = tokens[:-1]
+        segments = self.segments[idx]
+        ignore_tokens = self.ignore_tokens[idx]
+        labels = tokens[1:]
+        labels = np.where((labels != self.PAD_TOKEN_ID) & segments, labels, self.IGNORE_INDEX)
+        labels = np.where(ignore_tokens, self.IGNORE_INDEX, labels).astype(np.int64)
+        bboxes = self.bboxes[idx].astype(np.int32)
+        decoder_input_bboxes = bboxes[:-1]
+        bboxes = bboxes[1:]
+        bboxes = np.where((bboxes != self.PAD_BBOX_TOKEN_ID) & np.expand_dims(segments, axis=1), bboxes, self.IGNORE_INDEX).astype(np.int64) # this is very crucial for a trick `bbox_input_ids = bboxes[:, :, :3].to(torch.int32)` in modeling_ViTLP.py
+        n1 = (labels == self.LOCATE_ID).astype(np.float32).sum()
+        n2 = (labels != self.IGNORE_INDEX).astype(np.float32).sum()
+        if self.mode == 'train':
+            sample = {
+                'image': self.vitFeatureExtractor(Image.open(os.path.join(self.image_dir, self.image_map[idx])).convert('RGB')),
+                'decoder_input_ids': decoder_input_ids,
+                'decoder_input_bboxes': decoder_input_bboxes,
+                'labels': labels,
+                'bboxes': bboxes,
+                'n1': n1,
+                'n2': n2
+            }
+        else:
+            sample = {
+                'image': self.vitFeatureExtractor(Image.open(os.path.join(self.image_dir, self.image_map[idx])).convert('RGB')),
+                'decoder_input_ids': decoder_input_ids,
+                'decoder_input_bboxes': decoder_input_bboxes,
+                'labels': labels,
+                'bboxes': bboxes,
+                'token_types': self.token_types[idx]
+            }
+        return sample

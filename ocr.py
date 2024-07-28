@@ -319,7 +319,7 @@ def ocr(image, textbox, output_image_box):
     N = len(results)
     for i, (bbox, word) in enumerate(results):
         x1, y1, x2, y2 = bbox
-        ocr_str += '    {\"text\": \"%s\", \"bbox\": [%d, %d, %d, %d]}' % (word, x1, y1, x2, y2)
+        ocr_str += '    {\"text\": \"%s\", \"bbox\": [%d, %d, %d, %d]}' % (word.replace('\"', '\\\"'), x1, y1, x2, y2)
         if i != N - 1:
             ocr_str += ',\n'
         else:
@@ -347,7 +347,7 @@ def gradio_reset(image_input):
 
 
 if __name__ == '__main__':
-    with gr.Blocks() as demo:
+    with gr.Blocks(title='ViTLP') as demo:
         gr.Markdown('<h1 align="center">ViTLP OCR</h1>')
         with gr.Row():
             with gr.Column(scale=1):

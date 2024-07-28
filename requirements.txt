@@ -4,3 +4,6 @@ transformers==4.38.1
 gradio==4.26.0
 opencv-python==4.8.1.78
 opencv-python-headless==4.8.1.78
+synthtiger
+Pillow==9.5.0
+deepspeed
