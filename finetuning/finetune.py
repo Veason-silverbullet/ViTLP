@@ -118,7 +118,7 @@ def train(args):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='ViTLP fintuning')
+    parser = ArgumentParser(description='ViTLP finetuning')
     parser.add_argument('--checkpoint', default='../ckpts/ViTLP-medium', type=str)
     parser.add_argument('--epochs', default=2, type=int)
     parser.add_argument('--batch_size', default=4, type=int)
@@ -139,18 +139,12 @@ if __name__ == '__main__':
         args.local_rank = int(os.environ['LOCAL_RANK'])
     if args.local_rank in [-1, 0]:
         if args.local_rank == -1:
-            args.is_main_process = True
             args.rank = 0
-        elif args.rank == 0:
-            args.is_main_process = True
-        else:
-            args.is_main_process = False
         print('******************************** Config ********************************')
         for k, v in dict(vars(args)).items():
             print('%s : %s' % (k, str(v)))
         print('******************************** Config ********************************')
-    else:
-        args.is_main_process = False
+    args.is_main_process = args.rank == 0
     if args.local_rank != -1:
         dist.init_process_group()
     set_seed(args.seed)
