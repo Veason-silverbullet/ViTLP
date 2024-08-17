@@ -1,7 +1,6 @@
 import os
 import torch
 import json
-import pickle
 import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
@@ -40,7 +39,7 @@ class ViTFeatureExtractor(FeatureExtractionMixin, ImageFeatureExtractionMixin):
 
 
 class DocVQATrainDataset(Dataset):
-    def __init__(self, dataset_path, config, fp16):
+    def __init__(self, dataset_path, config, fp16=True):
         self.PAD_TOKEN_ID = config.pad_token_id  # 1
         self.PAD_BBOX_TOKEN_ID = config.bin_size # 1001
         self.IGNORE_INDEX = -100
@@ -48,50 +47,47 @@ class DocVQATrainDataset(Dataset):
         self.LOCATE_ID = config.vocab_size - 2
         assert self.LOCATE_ID == 50265 # hard-code confirmation
         self.ANSWER_SPAN_TYPE = 2
-        self.current_epoch = None
-        with open(os.path.join(dataset_path, 'meta.json'), 'r', encoding='utf-8') as f:
-            self.image_map = json.load(f)
-            self.effective_num = 0
-            for i in range(len(self.image_map)):
-                for j in range(len(self.image_map[i])):
-                    self.image_map[i][j]['image'] = os.path.join(dataset_path, self.image_map[i][j]['image'])
-                    assert self.image_map[i][j]['index'] == self.effective_num
-                    self.effective_num += 1
-            self.num = len(self.image_map)
-        with open(os.path.join(dataset_path, 'tokens-train-%d.pkl' % config.docvqa_seq_length), 'rb') as f:
-            tokens = pickle.load(f).astype(np.int32)
+        self.image_map = []
+        with open(os.path.join(dataset_path, 'train-mapping.txt'), 'r', encoding='utf-8') as f:
+            for line in f:
+                image = line.strip()
+                if len(image) > 0:
+                    self.image_map.append(os.path.join(dataset_path, image))
+        self.num = len(self.image_map)
+        with open(os.path.join(dataset_path, 'tokens-train-%d.npy' % config.docvqa_seq_length), 'rb') as f:
+            tokens = np.load(f).astype(np.int32)
             self.decoder_input_ids = tokens[:, :-1]
             self.labels = tokens[:, 1:]
             self.labels = np.where(self.labels != self.PAD_TOKEN_ID, self.labels, self.IGNORE_INDEX).astype(np.int64)
-            assert self.effective_num == tokens.shape[0], 'Sizes mismatch in tokens-train-%d.pkl, %d vs. %d' % (config.docvqa_seq_length, self.effective_num, tokens.shape[0]) # sanity check
-            with open(os.path.join(dataset_path, 'qa_span_types-train-%d.pkl' % config.docvqa_seq_length), 'rb') as f_:
-                qa_span_types = pickle.load(f_)[:, 1:]
+            assert self.num == tokens.shape[0], 'Sizes mismatch in tokens-train-%d.npy, %d vs. %d' % (config.docvqa_seq_length, self.num, tokens.shape[0]) # sanity check
+            with open(os.path.join(dataset_path, 'qa_span_types-train-%d.npy' % config.docvqa_seq_length), 'rb') as f_:
+                qa_span_types = np.load(f_)[:, 1:]
                 self.labels = np.where(qa_span_types == self.ANSWER_SPAN_TYPE, self.labels, self.IGNORE_INDEX)
-                assert self.effective_num == qa_span_types.shape[0], 'Sizes mismatch in qa_span_types-train-%d.pkl, %d vs. %d' % (config.docvqa_seq_length, self.effective_num, tokens.shape[0]) # sanity check
-        with open(os.path.join(dataset_path, 'bboxes-train-%d.pkl' % config.docvqa_seq_length), 'rb') as f:
-            bboxes = pickle.load(f).astype(np.int32)
+                assert self.num == qa_span_types.shape[0], 'Sizes mismatch in qa_span_types-train-%d.npy, %d vs. %d' % (config.docvqa_seq_length, self.num, tokens.shape[0]) # sanity check
+        with open(os.path.join(dataset_path, 'bboxes-train-%d.npy' % config.docvqa_seq_length), 'rb') as f:
+            bboxes = np.load(f).astype(np.int32)
             self.decoder_input_bboxes = bboxes[:, :-1]
             self.bboxes = bboxes[:, 1:]
             self.bboxes = np.where(self.bboxes != self.PAD_BBOX_TOKEN_ID, self.bboxes, self.IGNORE_INDEX)
             self.bboxes = np.where(np.expand_dims(qa_span_types == self.ANSWER_SPAN_TYPE, axis=2), self.bboxes, self.IGNORE_INDEX).astype(np.int64) # this is very crucial for a trick `bbox_input_ids = bboxes[:, :, :3].to(torch.int32)` in modeling_ViTLP.py
-            assert self.effective_num == bboxes.shape[0], 'Sizes mismatch in bboxes-train-%d.pkl, %d vs. %d' % (config.docvqa_seq_length, self.effective_num, self.bboxes.shape[0]) # sanity check
+            assert self.num == bboxes.shape[0], 'Sizes mismatch in bboxes-train-%d.npy, %d vs. %d' % (config.docvqa_seq_length, self.num, self.bboxes.shape[0]) # sanity check
             assert np.all((np.all(self.bboxes == self.IGNORE_INDEX, axis=2)) | (qa_span_types == self.ANSWER_SPAN_TYPE)) # make sure all bbox tokens appear in answer spans
 
     def __len__(self):
         return self.num
 
-    def set_current_epoch(self, current_epoch):
-        self.current_epoch = current_epoch
-
-    def __getitem__(self, idx_):
-        index = self.current_epoch % len(self.image_map[idx_])
-        idx = self.image_map[idx_][index]['index']
+    def __getitem__(self, idx):
+        labels = self.labels[idx]
+        n1 = (labels == self.LOCATE_ID).astype(np.float32).sum()
+        n2 = (labels != self.IGNORE_INDEX).astype(np.float32).sum()
         sample = {
-            'image': self.vitFeatureExtractor(Image.open(self.image_map[idx_][index]['image']).convert('RGB')),
+            'image': self.vitFeatureExtractor(Image.open(self.image_map[idx]).convert('RGB')),
             'decoder_input_ids': self.decoder_input_ids[idx],
             'decoder_input_bboxes': self.decoder_input_bboxes[idx],
-            'labels': self.labels[idx],
-            'bboxes': self.bboxes[idx]
+            'labels': labels,
+            'bboxes': self.bboxes[idx],
+            'n1': n1,
+            'n2': n2
         }
         return sample
 
@@ -117,18 +113,18 @@ class DocVQAInferDataset(Dataset):
                     self.vqa_info.append([questionId, image_path])
                     indices.append(index)
             self.num = len(self.image_map)
-        with open(os.path.join(dataset_path, 'tokens-%s-%d.pkl' % (self.mode, config.docvqa_seq_length)), 'rb') as f:
-            decoder_input_ids = pickle.load(f)
+        with open(os.path.join(dataset_path, 'tokens-%s-%d.npy' % (self.mode, config.docvqa_seq_length)), 'rb') as f:
+            decoder_input_ids = np.load(f)
             for i in range(len(decoder_input_ids)):
                 decoder_input_ids[i] = decoder_input_ids[i].astype(np.int32)
             self.decoder_input_ids = [decoder_input_ids[index] for index in indices]
-            assert self.num == len(self.decoder_input_ids), 'Sizes mismatch in tokens-%s-%d.pkl, %d vs. %d' % (self.mode, config.docvqa_seq_length, self.num, len(self.decoder_input_ids)) # sanity check
-        with open(os.path.join(dataset_path, 'bboxes-%s-%d.pkl' % (self.mode, config.docvqa_seq_length)), 'rb') as f:
-            decoder_input_bboxes = pickle.load(f)
+            assert self.num == len(self.decoder_input_ids), 'Sizes mismatch in tokens-%s-%d.npy, %d vs. %d' % (self.mode, config.docvqa_seq_length, self.num, len(self.decoder_input_ids)) # sanity check
+        with open(os.path.join(dataset_path, 'bboxes-%s-%d.npy' % (self.mode, config.docvqa_seq_length)), 'rb') as f:
+            decoder_input_bboxes = np.load(f)
             for i in range(len(decoder_input_bboxes)):
                 decoder_input_bboxes[i] = decoder_input_bboxes[i].astype(np.int32)
             self.decoder_input_bboxes = [decoder_input_bboxes[index] for index in indices]
-            assert self.num == len(self.decoder_input_bboxes), 'Sizes mismatch in bboxes-%s-%d.pkl, %d vs. %d' % (self.mode, config.docvqa_seq_length, self.num, len(self.decoder_input_bboxes)) # sanity check
+            assert self.num == len(self.decoder_input_bboxes), 'Sizes mismatch in bboxes-%s-%d.npy, %d vs. %d' % (self.mode, config.docvqa_seq_length, self.num, len(self.decoder_input_bboxes)) # sanity check
         self.ground_truth = os.path.join(dataset_path, mode + '_v1.0.json')
         assert os.path.exists(self.ground_truth), 'Ground truth file does not exist: ' + self.ground_truth
 

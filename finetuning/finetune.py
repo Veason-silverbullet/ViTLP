@@ -3,6 +3,7 @@ sys.path.append('..')
 import os
 import torch
 from argparse import ArgumentParser
+import json
 from transformers import get_scheduler, set_seed
 from torch.utils.tensorboard import SummaryWriter
 from models.ViTLP.configuration_ViTLP import ViTLPConfig
@@ -41,7 +42,7 @@ def train(args):
     model.train()
 
     # Step2: Prepare training data
-    train_dataset = PretrainDataset(dataset_path=args.train_data_path, image_dir=args.image_dir, config=config, mode='train')
+    train_dataset = PretrainDataset(dataset_path=args.train_data_dir, image_dir=args.image_dir, config=config, mode='train')
     if args.local_rank == -1:
         train_sampler = RandomSampler(train_dataset)
     else:
@@ -58,8 +59,6 @@ def train(args):
     num_training_steps = args.epochs * len(train_dataloader)
     num_warmup_steps = int(num_training_steps * 0.025)
     scheduler = get_scheduler(name='linear', optimizer=optimizer, num_training_steps=num_training_steps, num_warmup_steps=num_warmup_steps)
-    if args.is_main_process:
-        print('Training steps:', num_training_steps)
 
     # Step4: Training
     model, _, _, lr_scheduler = deepspeed.initialize(
@@ -73,9 +72,17 @@ def train(args):
     if args.is_main_process:
         writer = SummaryWriter(log_dir=args.output_dir, filename_suffix='.training-log')
         iteration_lm_loss, iteration_locate_loss, iteration_loss = 0, 0, 0
+    with open(args.deepspeed_config, 'r', encoding='utf-8') as f:
+        deepspeed_config = json.load(f)
+    gradient_accumulation_steps = deepspeed_config['gradient_accumulation_steps'] if 'gradient_accumulation_steps' in deepspeed_config else 1
+    args.log_interval *= gradient_accumulation_steps
+    args.save_iteration *= gradient_accumulation_steps
+    if args.is_main_process:
+        print('Training steps:', num_training_steps // gradient_accumulation_steps)
 
     for epoch_index in range(1, args.epochs + 1):
-        train_sampler.set_epoch(epoch_index)
+        if args.local_rank != -1:
+            train_sampler.set_epoch(epoch_index)
         for batch in train_dataloader:
             n1 = batch['n1']
             n2 = batch['n2']
@@ -105,13 +112,13 @@ def train(args):
                     iteration_loss /= args.log_interval
                     iteration_lm_loss /= args.log_interval
                     iteration_locate_loss /= args.log_interval
-                    print('Iteration %d: lr = %.6f\tloss = %.3f\tlm_loss = %.3f\tlocate_loss = %.3f' % (iteration, lr_scheduler._last_lr[0], iteration_loss, iteration_lm_loss, iteration_locate_loss))
-                    writer.add_scalar('Iteration loss', iteration_loss, iteration)
-                    writer.add_scalar('Iteration lm_loss', iteration_lm_loss, iteration)
-                    writer.add_scalar('Iteration locate_loss', iteration_locate_loss, iteration)
+                    print('Iteration %d: lr = %.6f\tloss = %.3f\tlm_loss = %.3f\tlocate_loss = %.3f' % (iteration // gradient_accumulation_steps, lr_scheduler._last_lr[0], iteration_loss, iteration_lm_loss, iteration_locate_loss))
+                    writer.add_scalar('Iteration loss', iteration_loss, iteration // gradient_accumulation_steps)
+                    writer.add_scalar('Iteration lm_loss', iteration_lm_loss, iteration // gradient_accumulation_steps)
+                    writer.add_scalar('Iteration locate_loss', iteration_locate_loss, iteration // gradient_accumulation_steps)
                     iteration_lm_loss, iteration_locate_loss, iteration_loss = 0, 0, 0
             if args.save_iteration > 0 and iteration % args.save_iteration == 0:
-                save_checkpoint(model, os.path.join(args.output_dir, 'iteration-' + str(iteration)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
+                save_checkpoint(model, os.path.join(args.output_dir, 'iteration-' + str(iteration // gradient_accumulation_steps)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
         save_checkpoint(model, os.path.join(args.output_dir, 'epoch-' + str(epoch_index)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
     if args.is_main_process:
         writer.close()
@@ -122,13 +129,13 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoint', default='../ckpts/ViTLP-medium', type=str)
     parser.add_argument('--epochs', default=2, type=int)
     parser.add_argument('--batch_size', default=4, type=int)
-    parser.add_argument('--train_data_path', default='text_bbox_data', type=str)
+    parser.add_argument('--train_data_dir', default='text_bbox_data', type=str)
     parser.add_argument('--image_dir', default='text_bbox_data/images', type=str)
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--output_dir', default='outputs', type=str)
     parser.add_argument('--log_interval', default=1, type=int)
     parser.add_argument('--save_iteration', default=1000, type=int)
-    parser.add_argument('--deepspeed_config', default='zero1_fp16.json', type=str)
+    parser.add_argument('--deepspeed_config', default='misc/zero1_fp16.json', type=str)
     parser.add_argument('--learning_rate', default=1e-4, type=float)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--gradient_checkpointing', default=1, type=int)

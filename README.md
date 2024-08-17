@@ -28,8 +28,8 @@ See detailed inference code at `decode.py` and run batch decode by
 <pre><code>bash decode.sh</code></pre>
 
 
-# Finetuning ViTLP
-Please refer to [./finetuning](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning) for finetuning ViTLP.
+# Fine-tuning ViTLP
+Please refer to [./finetuning](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning) for post-training on OCR datasets and fine-tuning on VQA datasets.
 
 We also release a tool for synthesizing documents with grounding-box metadata at [./finetuning/SynthDog-bbox](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/SynthDog-bbox).
 
