@@ -125,7 +125,7 @@ def train(args):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='ViTLP finetuning')
+    parser = ArgumentParser(description='ViTLP OCR fine-tuning')
     parser.add_argument('--checkpoint', default='../ckpts/ViTLP-medium', type=str)
     parser.add_argument('--epochs', default=2, type=int)
     parser.add_argument('--batch_size', default=4, type=int)

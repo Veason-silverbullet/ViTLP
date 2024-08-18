@@ -126,7 +126,7 @@ def train(args):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='ViTLP finetuning')
+    parser = ArgumentParser(description='ViTLP DocVQA fine-tuning')
     parser.add_argument('--checkpoint', default='../ckpts/ViTLP-medium', type=str)
     parser.add_argument('--docvqa_seq_length', default=96, type=int)
     parser.add_argument('--epochs', default=60, type=int)
