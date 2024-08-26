@@ -42,3 +42,12 @@ deepspeed --num_nodes 1 --num_gpus 4 finetune.py --deepspeed_config=misc/zero1_f
 2. Run `./finetune_docvqa.py` to fine-tune ViTLP on the DocVQA dataset:
 <pre><code># Fine-tune ViTLP with gradient accumulation steps of 4, saving the checkpoint at `./DocVQA-outputs`
 deepspeed --num_nodes 1 --num_gpus 4 finetune_docvqa.py --batch_size=8 --deepspeed_config=misc/zero1_fp16-grad_acc-4.json --output_dir=DocVQA-outputs</code></pre>
+
+
+## VQA Inference
+Run `./inference_docvqa.py` to perform VQA with a fine-tuned ViTLP VQA model:
+<pre><code># Given the fine-tuned ViTLP checkpoint at `--vqa_finetuned_model=./DocVQA-outputs/epoch-60/ViTLP` and a VQA image at `--image`, run inference code by
+python inference_docvqa.py \
+       --vqa_finetuned_model=./DocVQA-outputs/epoch-60/ViTLP \
+       --image=../../datasets/DocVQA/documents/nkbl0226_1.png \
+       --question="What is name of university?"</code></pre>
