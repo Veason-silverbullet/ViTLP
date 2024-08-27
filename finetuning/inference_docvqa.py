@@ -13,6 +13,8 @@ BBOX_SEARCH_SIZE = 4
 BBOX_SEARCH_SIZES = [BBOX_SEARCH_SIZE, BBOX_SEARCH_SIZE, BBOX_SEARCH_SIZE, BBOX_SEARCH_SIZE]
 LOCATE_TOKEN_ID = 50265
 VQA_TOEKN_ID = 50261 # [VQA]
+ANS_YES_TOKEN_ID = 50262 # [ANS_YES]
+ANS_NO_TOKEN_ID = 50263 # [ANS_NO]
 EOS_TOKEN_ID = 2
 MAX_LENGTH = 1280
 IOU_THRESHOLD = 0.5
@@ -148,6 +150,11 @@ def vqa(image, decoder_input_ids):
         else:
             index = torch.argmax(lm_decoder.lm_head(hidden_states)[:, 2:-1], dim=1) + 2
         index_ = index.item()
+        if i == decoder_input_len:
+            if index_ == ANS_YES_TOKEN_ID:
+                return [[None, 'Yes']]
+            if index_ == ANS_NO_TOKEN_ID:
+                return [[None, 'No']]
         if index_ == LOCATE_TOKEN_ID:
             decode_bbox = bbox_decode(hidden_states, return_list=False)[0, :].unsqueeze(dim=0)
             word = tokenizer.decode(decode_ids).strip()
