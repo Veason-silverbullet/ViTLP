@@ -39,11 +39,11 @@ class ViTFeatureExtractor(FeatureExtractionMixin, ImageFeatureExtractionMixin):
 
 
 class DocVQATrainDataset(Dataset):
-    def __init__(self, dataset_path, config, fp16=True):
+    def __init__(self, dataset_path, config, image_width, image_height, fp16=True):
         self.PAD_TOKEN_ID = config.pad_token_id  # 1
         self.PAD_BBOX_TOKEN_ID = config.bin_size # 1001
         self.IGNORE_INDEX = -100
-        self.vitFeatureExtractor = ViTFeatureExtractor(do_resize=True, size=[config.image_width, config.image_height], resample=config.resample, do_normalize=True, fp16=fp16)
+        self.vitFeatureExtractor = ViTFeatureExtractor(do_resize=True, size=[image_width, image_height], resample=config.resample, do_normalize=True, fp16=fp16)
         self.LOCATE_ID = config.vocab_size - 2
         assert self.LOCATE_ID == 50265 # hard-code confirmation
         self.ANSWER_SPAN_TYPE = 2
@@ -93,12 +93,12 @@ class DocVQATrainDataset(Dataset):
 
 
 class DocVQAInferDataset(Dataset):
-    def __init__(self, dataset_path, config, mode, rank, world_size):
+    def __init__(self, dataset_path, config, image_width, image_height, mode, rank, world_size):
         assert mode in ['val', 'test']
         self.mode = mode
         self.rank = rank
         self.world_size = world_size
-        self.vitFeatureExtractor = ViTFeatureExtractor(do_resize=True, size=[config.image_width, config.image_height], resample=config.resample, do_normalize=True, fp16=False)
+        self.vitFeatureExtractor = ViTFeatureExtractor(do_resize=True, size=[image_width, image_height], resample=config.resample, do_normalize=True, fp16=False)
         self.vqa_info = []
         self.image_map = []
         indices = []

@@ -27,7 +27,7 @@ Run `preprocess_data.py` to preprocess the OCR fine-tuning dataset:
 
 3. Run `preprocess_docvqa_data.py` to preprocess the DocVQA fine-tuning dataset:
 
-<pre><code>process_docvqa_train_data(data_dir = './DocVQA')</code></pre>
+   <pre><code>process_docvqa_train_data(data_dir = './DocVQA')</code></pre>
 
 - `data_dir`: The DocVQA metadata is readily available at [./DocVQA/train-metadata.json](https://github.com/Veason-silverbullet/ViTLP/tree/main/finetuning/DocVQA/train-metadata.json).
 
@@ -35,13 +35,13 @@ Run `preprocess_data.py` to preprocess the OCR fine-tuning dataset:
 
 ## Fine-tuning ViTLP
 1. Run `./finetune.py` to fine-tune ViTLP on the OCR dataset:
-<pre><code># Fine-tune ViTLP with 4 GPUs and Deepspeed Zero-1, saving the checkpoint at `./outputs`
-deepspeed --num_nodes 1 --num_gpus 4 finetune.py --deepspeed_config=misc/zero1_fp16.json --output_dir=outputs</code></pre>
+   <pre><code># Fine-tune ViTLP with 4 GPUs and Deepspeed Zero-1, saving the checkpoint at `./outputs`
+   deepspeed --num_nodes 1 --num_gpus 4 finetune.py --deepspeed_config=misc/zero1_fp16.json --output_dir=outputs</code></pre>
 
 
 2. Run `./finetune_docvqa.py` to fine-tune ViTLP on the DocVQA dataset:
-<pre><code># Fine-tune ViTLP with gradient accumulation steps of 4, saving the checkpoint at `./DocVQA-outputs`
-deepspeed --num_nodes 1 --num_gpus 4 finetune_docvqa.py --batch_size=8 --deepspeed_config=misc/zero1_fp16-grad_acc-4.json --output_dir=DocVQA-outputs</code></pre>
+   <pre><code># Fine-tune ViTLP with gradient accumulation steps of 4, saving the checkpoint at `./DocVQA-outputs`
+   deepspeed --num_nodes 1 --num_gpus 4 finetune_docvqa.py --batch_size=8 --deepspeed_config=misc/zero1_fp16-grad_acc-4.json --output_dir=DocVQA-outputs</code></pre>
 
 
 ## VQA Inference

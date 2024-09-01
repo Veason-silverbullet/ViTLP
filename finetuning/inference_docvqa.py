@@ -21,6 +21,8 @@ IOU_THRESHOLD = 0.5
 IOU_UPPERBOUND = 0.8
 parser = ArgumentParser(description='ViTLP OCR')
 parser.add_argument('--vqa_finetuned_model', required=True, type=str, help='Fine-tuned ViTLP model')
+parser.add_argument('--image_width', default=1920, type=int)
+parser.add_argument('--image_height', default=2304, type=int)
 parser.add_argument('--image', required=True, type=str, help='Image')
 parser.add_argument('--question', required=True, type=str, help='Question')
 args = parser.parse_args()
@@ -69,7 +71,7 @@ class ViTFeatureExtractor(FeatureExtractionMixin, ImageFeatureExtractionMixin):
         if self.do_normalize:
             image = self.normalize(image=image, mean=self.image_mean, std=self.image_std)
         return torch.from_numpy(image)
-vitFeatureExtractor = ViTFeatureExtractor(do_resize=True, size=[config.image_width, config.image_height], resample=config.resample, do_normalize=True)
+vitFeatureExtractor = ViTFeatureExtractor(do_resize=True, size=[args.image_width, args.image_height], resample=config.resample, do_normalize=True)
 
 
 # bboxes     : [num, 4]
@@ -210,12 +212,23 @@ def vqa(image, decoder_input_ids):
     return results
 
 
+def reformat(s):
+    while '  ' in s:
+        s = s.replace('  ', ' ')
+    while s.endswith(' ?'):
+        s = s[:-2] + '?'
+    while s.endswith('??'):
+        s = s[:-2] + '?'
+    s = s.strip()
+    return s
+
+
 if __name__ == '__main__':
     with torch.no_grad():
         image = Image.open(args.image).convert('RGB')
         image = vitFeatureExtractor(image)
         image = image.cuda().unsqueeze(dim=0)
-        decoder_input_ids = [[VQA_TOEKN_ID] + tokenizer.encode(args.question, add_special_tokens=False) + [EOS_TOKEN_ID]]
+        decoder_input_ids = [[VQA_TOEKN_ID] + tokenizer.encode(reformat(args.question), add_special_tokens=False) + [EOS_TOKEN_ID]]
         decoder_input_ids = torch.IntTensor(decoder_input_ids).cuda()
         answer_with_bboxes = vqa(image, decoder_input_ids)
         answer_words = [item[1] for item in answer_with_bboxes]

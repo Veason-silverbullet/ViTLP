@@ -43,7 +43,7 @@ def train(args):
     model.train()
 
     # Step2: Prepare training data
-    train_dataset = DocVQATrainDataset(dataset_path=args.train_data_dir, config=config)
+    train_dataset = DocVQATrainDataset(dataset_path=args.train_data_dir, config=config, image_width=args.image_width, image_height=args.image_height) # See Appendix A.2 at https://aclanthology.org/2024.naacl-long.264.pdf, we imporve the image resolution for DocVQA
     if args.local_rank == -1:
         train_sampler = RandomSampler(train_dataset)
     else:
@@ -128,8 +128,10 @@ def train(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description='ViTLP DocVQA fine-tuning')
     parser.add_argument('--checkpoint', default='../ckpts/ViTLP-medium', type=str)
-    parser.add_argument('--docvqa_seq_length', default=96, type=int)
+    parser.add_argument('--docvqa_seq_length', default=80, type=int)
     parser.add_argument('--epochs', default=60, type=int)
+    parser.add_argument('--image_width', default=1920, type=int)
+    parser.add_argument('--image_height', default=2304, type=int)
     parser.add_argument('--batch_size', default=16, type=int) # 8 GPUs
     parser.add_argument('--train_data_dir', default='DocVQA', type=str)
     parser.add_argument('--seed', default=0, type=int)
@@ -137,7 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('--log_interval', default=1, type=int)
     parser.add_argument('--save_iteration', default=1000, type=int)
     parser.add_argument('--deepspeed_config', default='misc/zero1_fp16.json', type=str)
-    parser.add_argument('--learning_rate', default=1e-4, type=float)
+    parser.add_argument('--learning_rate', default=3e-5, type=float)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--gradient_checkpointing', default=1, type=int)
     parser.add_argument('--local_rank', default=-1, type=int)

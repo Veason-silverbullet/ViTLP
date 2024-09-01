@@ -323,7 +323,7 @@ class VitlpEncoder(VitlpPretrainedModel):
         self.gradient_checkpointing = config.gradient_checkpointing
         self.post_init()
 
-    def interpolate_pos_encoding(self, embeddings: torch.Tensor) -> torch.Tensor:
+    def interpolate_pos_encoding(self, embeddings: torch.Tensor, resize_h: int, resize_w: int) -> torch.Tensor:
         npatch = embeddings.shape[1] - 1
         N = self.position_embeddings.shape[1] - 1
         if npatch == N:
@@ -331,16 +331,18 @@ class VitlpEncoder(VitlpPretrainedModel):
         class_pos_embed = self.position_embeddings[:, 0]
         patch_pos_embed = self.position_embeddings[:, 1:]
         dim = embeddings.shape[-1]
+        assert self.image_height % self.patch_size == 0 and self.image_width % self.patch_size == 0 and resize_h % self.patch_size == 0 and resize_w % self.patch_size == 0
         h0 = self.image_height // self.patch_size
         w0 = self.image_width // self.patch_size
-        h0, w0 = h0 + 0.1, w0 + 0.1
+        h1 = resize_h // self.patch_size
+        w1 = resize_w // self.patch_size
         patch_pos_embed = nn.functional.interpolate(
-            patch_pos_embed.reshape(1, int(math.sqrt(N)), int(math.sqrt(N)), dim).permute(0, 3, 1, 2),
-            scale_factor=(h0 / math.sqrt(N), w0 / math.sqrt(N)),
+            patch_pos_embed.reshape(1, h0, w0, dim).permute(0, 3, 1, 2),
+            scale_factor=(h1 / h0, w1 / w0),
             mode='bicubic',
             align_corners=False
         )
-        assert int(h0) == patch_pos_embed.shape[-2] and int(w0) == patch_pos_embed.shape[-1]
+        assert h1 == patch_pos_embed.shape[-2] and w1 == patch_pos_embed.shape[-1]
         patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
         return torch.cat((class_pos_embed.unsqueeze(0), patch_pos_embed), dim=1)
 
@@ -349,7 +351,7 @@ class VitlpEncoder(VitlpPretrainedModel):
         cls_embeddings = self.cls_token.expand(batch_size, -1, -1)
         patch_embeddings = self.patch_embeddings(pixel_values)
         embeddings = torch.cat([cls_embeddings, patch_embeddings], dim=1)
-        embeddings = embeddings + self.interpolate_pos_encoding(embeddings)
+        embeddings = embeddings + self.interpolate_pos_encoding(embeddings, pixel_values.size(2), pixel_values.size(3))
         embeddings = self.dropout(embeddings)
         return embeddings
 

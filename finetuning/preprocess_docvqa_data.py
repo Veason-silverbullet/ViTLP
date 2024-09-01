@@ -10,7 +10,7 @@ ANS_YES_TOKEN_ID = 50262 # [ANS_YES]
 ANS_NO_TOKEN_ID = 50263 # [ANS_NO]
 PAD_TOKEN_ID = 1
 EOS_TOKEN_ID = 2
-MAX_LENGTH = 96
+MAX_LENGTH = 80
 PAD_TOKEN_TYPE = 0
 WORD_TOKEN_TYPE = 1
 LOCATE_TOKEN_TYPE = 2
@@ -19,6 +19,17 @@ QUESTION_SPAN_TYPE = 1
 ANSWER_SPAN_TYPE = 2
 tokenizer = BartTokenizer.from_pretrained('../configs/ViTLP-1920-1600')
 USE_WORD_BBOX = True
+
+
+def reformat(s):
+    while '  ' in s:
+        s = s.replace('  ', ' ')
+    while s.endswith(' ?'):
+        s = s[:-2] + '?'
+    while s.endswith('??'):
+        s = s[:-2] + '?'
+    s = s.strip()
+    return s
 
 
 def process_docvqa_train_data(data_dir):
@@ -30,9 +41,10 @@ def process_docvqa_train_data(data_dir):
     token_types = np.zeros([N, MAX_LENGTH], dtype=np.int8)
     qa_span_types = np.zeros([N, MAX_LENGTH], dtype=np.int8)
     tokens[:, 0] = VQA_TOEKN_ID
+    max_pos = 0
     with open(os.path.join(data_dir, 'train-mapping.txt'), 'w', encoding='utf-8') as f:
         for index, item in enumerate(metadata):
-            question = item['question']
+            question = reformat(item['question'])
             question_tokens = tokenizer.encode(question, add_special_tokens=False) + [EOS_TOKEN_ID]
             pos = 1
             for token in question_tokens:
@@ -93,7 +105,9 @@ def process_docvqa_train_data(data_dir):
                     token_types[index][pos] = LOCATE_TOKEN_TYPE
                     qa_span_types[index][pos] = ANSWER_SPAN_TYPE
                     pos += 1
+            max_pos = max(max_pos, pos)
             f.write(item['image'] + '\n')
+    print('Max length:', max_pos)
     np.save(os.path.join(data_dir, 'tokens-train-%d.npy' % MAX_LENGTH), tokens)
     np.save(os.path.join(data_dir, 'bboxes-train-%d.npy' % MAX_LENGTH), bboxes)
     np.save(os.path.join(data_dir, 'token_types-train-%d.npy' % MAX_LENGTH), token_types)

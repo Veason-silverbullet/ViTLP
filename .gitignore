@@ -23,3 +23,7 @@ nohup.*
 /finetuning/DocVQA/spdocvqa_images.tar.gz
 /finetuning/DocVQA/spdocvqa_ocr.tar.gz
 /finetuning/DocVQA/visualization
+finetuning/temp.sh
+finetuning/anls.py
+finetuning/docvqa.py
+finetuning/prediction.json
