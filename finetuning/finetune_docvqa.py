@@ -36,6 +36,9 @@ def train(args):
     config.docvqa_seq_length = args.docvqa_seq_length
     config.gradient_checkpointing = bool(args.gradient_checkpointing)
     config.load_vit = config.load_bart = False
+    config.hidden_dropout_prob = 0
+    config.attention_dropout = 0
+    config.activation_dropout = 0
     model = ViTLPForDocVQA.from_pretrained(args.checkpoint, config=config)
     if config.gradient_checkpointing:
         model.gradient_checkpointing_enable()
@@ -139,7 +142,7 @@ if __name__ == '__main__':
     parser.add_argument('--log_interval', default=1, type=int)
     parser.add_argument('--save_iteration', default=1000, type=int)
     parser.add_argument('--deepspeed_config', default='misc/zero1_fp16.json', type=str)
-    parser.add_argument('--learning_rate', default=3e-5, type=float)
+    parser.add_argument('--learning_rate', default=4e-5, type=float)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--gradient_checkpointing', default=1, type=int)
     parser.add_argument('--local_rank', default=-1, type=int)

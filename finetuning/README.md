@@ -40,8 +40,8 @@ Run `preprocess_data.py` to preprocess the OCR fine-tuning dataset:
 
 
 2. Run `./finetune_docvqa.py` to fine-tune ViTLP on the DocVQA dataset:
-   <pre><code># Fine-tune ViTLP with gradient accumulation steps of 4, saving the checkpoint at `./DocVQA-outputs`
-   deepspeed --num_nodes 1 --num_gpus 4 finetune_docvqa.py --batch_size=8 --deepspeed_config=misc/zero1_fp16-grad_acc-4.json --output_dir=DocVQA-outputs</code></pre>
+   <pre><code># Fine-tune ViTLP with gradient accumulation steps of 16, saving the checkpoint at `./DocVQA-outputs`
+   deepspeed --num_nodes 1 --num_gpus 4 finetune_docvqa.py --batch_size=8 --deepspeed_config=misc/zero1_fp16-grad_acc-16.json --output_dir=DocVQA-outputs</code></pre>
 
 
 ## VQA Inference

@@ -1,5 +1,4 @@
 # The Transformer code is adapted from https://github.com/huggingface/transformers/blob/main/src/transformers/models/bart/modeling_bart.py
-import math
 import copy
 import torch
 import torch.utils.checkpoint
@@ -323,7 +322,7 @@ class VitlpEncoder(VitlpPretrainedModel):
         self.gradient_checkpointing = config.gradient_checkpointing
         self.post_init()
 
-    def interpolate_pos_encoding(self, embeddings: torch.Tensor, resize_h: int, resize_w: int) -> torch.Tensor:
+    def interpolate_pos_encoding(self, embeddings: torch.Tensor, height: int, width: int) -> torch.Tensor:
         npatch = embeddings.shape[1] - 1
         N = self.position_embeddings.shape[1] - 1
         if npatch == N:
@@ -331,11 +330,11 @@ class VitlpEncoder(VitlpPretrainedModel):
         class_pos_embed = self.position_embeddings[:, 0]
         patch_pos_embed = self.position_embeddings[:, 1:]
         dim = embeddings.shape[-1]
-        assert self.image_height % self.patch_size == 0 and self.image_width % self.patch_size == 0 and resize_h % self.patch_size == 0 and resize_w % self.patch_size == 0
+        assert self.image_height % self.patch_size == 0 and self.image_width % self.patch_size == 0 and height % self.patch_size == 0 and width % self.patch_size == 0
         h0 = self.image_height // self.patch_size
         w0 = self.image_width // self.patch_size
-        h1 = resize_h // self.patch_size
-        w1 = resize_w // self.patch_size
+        h1 = height // self.patch_size
+        w1 = width // self.patch_size
         patch_pos_embed = nn.functional.interpolate(
             patch_pos_embed.reshape(1, h0, w0, dim).permute(0, 3, 1, 2),
             scale_factor=(h1 / h0, w1 / w0),
