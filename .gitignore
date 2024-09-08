@@ -12,6 +12,12 @@ nohup.*
 /finetuning/DocVQA/MS-OCR/
 /finetuning/DocVQA/ViTLP-OCR-early_stopping/
 /finetuning/DocVQA/ViTLP-OCR-augmented-early_stopping/
+/finetuning/DocVQA/ViTLP-OCR-split/
+/finetuning/DocVQA/ViTLP-OCR-augmented-split/
+/finetuning/DocVQA/Paddle-OCR-split/
+/finetuning/DocVQA/MS-OCR-split/
+/finetuning/DocVQA/ViTLP-OCR-early_stopping-split/
+/finetuning/DocVQA/ViTLP-OCR-augmented-early_stopping-split/
 /finetuning/DocVQA/documents/
 /finetuning/DocVQA/ocr/
 /finetuning/DocVQA/*.zip
@@ -27,3 +33,4 @@ finetuning/temp.sh
 finetuning/anls.py
 finetuning/docvqa.py
 finetuning/prediction.json
+finetuning/prediction.txt

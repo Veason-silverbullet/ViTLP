@@ -31,7 +31,7 @@ def save_checkpoint(model: deepspeed.DeepSpeedEngine, checkpoint_dir: str, is_ma
 
 
 def train(args):
-    # Step1: Initialize ViTLP checkpoint
+    # Step 1: Initialize ViTLP checkpoint
     config = ViTLPConfig.from_pretrained(args.checkpoint)
     config.gradient_checkpointing = bool(args.gradient_checkpointing)
     config.load_vit = config.load_bart = False
@@ -41,7 +41,7 @@ def train(args):
     model = model.cuda()
     model.train()
 
-    # Step2: Prepare training data
+    # Step 2: Prepare training data
     train_dataset = PretrainDataset(dataset_path=args.train_data_dir, image_dir=args.image_dir, config=config, mode='train')
     if args.local_rank == -1:
         train_sampler = RandomSampler(train_dataset)
@@ -49,7 +49,7 @@ def train(args):
         train_sampler = DistributedSampler(train_dataset, shuffle=True)
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=2)
 
-    # Step3: Prepare optimizer
+    # Step 3: Prepare optimizer
     no_decay = ['bias', 'layernorm', 'layer_norm']
     optimizer_grouped_parameters = [
         {'params': [p for n, p in filter(lambda x: x[1].requires_grad, model.named_parameters()) if not any(nd in n for nd in no_decay)], 'weight_decay': args.weight_decay},
@@ -60,7 +60,7 @@ def train(args):
     num_warmup_steps = int(num_training_steps * 0.025)
     scheduler = get_scheduler(name='linear', optimizer=optimizer, num_training_steps=num_training_steps, num_warmup_steps=num_warmup_steps)
 
-    # Step4: Training
+    # Step 4: Training
     model, _, _, lr_scheduler = deepspeed.initialize(
         model=model,
         optimizer=optimizer,

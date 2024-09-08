@@ -219,6 +219,9 @@ def reformat(s):
         s = s[:-2] + '?'
     while s.endswith('??'):
         s = s[:-2] + '?'
+    while s.endswith(' .'):
+        s = s[:-2] + '.'
+    s = s.replace(' ,', ',')
     s = s.strip()
     return s
 

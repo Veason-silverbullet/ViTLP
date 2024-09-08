@@ -28,6 +28,8 @@ def reformat(s):
         s = s[:-2] + '?'
     while s.endswith('??'):
         s = s[:-2] + '?'
+    while s.endswith(' .'):
+        s = s[:-2] + '.'
     s = s.strip()
     return s
 
@@ -53,19 +55,21 @@ def process_docvqa_train_data(data_dir):
                 token_types[index][pos] = WORD_TOKEN_TYPE
                 qa_span_types[index][pos] = QUESTION_SPAN_TYPE
                 pos += 1
-            answer = item['answer']
-            assert (answer in ['[ANS_YES]', '[ANS_NO]']) == ('bboxes' not in item)
-            if answer == '[ANS_YES]':
-                tokens[index][pos] = ANS_YES_TOKEN_ID
-                token_types[index][pos] = WORD_TOKEN_TYPE
-                qa_span_types[index][pos] = ANSWER_SPAN_TYPE
-                pos += 1
-            elif answer == '[ANS_NO]':
-                tokens[index][pos] = ANS_NO_TOKEN_ID
-                token_types[index][pos] = WORD_TOKEN_TYPE
-                qa_span_types[index][pos] = ANSWER_SPAN_TYPE
-                pos += 1
-            else:
+            assert (item['TYPE'] in ['answer_without_bbox', 'yes_no_answer']) == ('bboxes' not in item)
+            if item['TYPE'] == 'yes_no_answer':
+                answer = item['answer']
+                if answer == '[ANS_YES]':
+                    tokens[index][pos] = ANS_YES_TOKEN_ID
+                    token_types[index][pos] = WORD_TOKEN_TYPE
+                    qa_span_types[index][pos] = ANSWER_SPAN_TYPE
+                    pos += 1
+                else:
+                    assert answer == '[ANS_NO]', answer
+                    tokens[index][pos] = ANS_NO_TOKEN_ID
+                    token_types[index][pos] = WORD_TOKEN_TYPE
+                    qa_span_types[index][pos] = ANSWER_SPAN_TYPE
+                    pos += 1
+            elif item['TYPE'] == 'answer_with_bbox':
                 if USE_WORD_BBOX:
                     for bbox, word in item['bboxes']:
                         answer_tokens = tokenizer.encode(' ' + word.strip(), add_special_tokens=False)
@@ -102,6 +106,20 @@ def process_docvqa_train_data(data_dir):
                         x2 = max(x2, item['bboxes'][i][0][2])
                         y2 = max(y2, item['bboxes'][i][0][3])
                     bboxes[index][pos] = [x1, y1, x2, y2]
+                    token_types[index][pos] = LOCATE_TOKEN_TYPE
+                    qa_span_types[index][pos] = ANSWER_SPAN_TYPE
+                    pos += 1
+            else: # A workaround to incorporate more training samples that cannot be linked with bounding boxes
+                assert item['TYPE'] == 'answer_without_bbox', item['TYPE']
+                for word in item['answer_words']:
+                    answer_tokens = tokenizer.encode(' ' + word, add_special_tokens=False)
+                    for token in answer_tokens:
+                        assert token != LOCATE_TOKEN_ID
+                        tokens[index][pos] = token
+                        token_types[index][pos] = WORD_TOKEN_TYPE
+                        qa_span_types[index][pos] = ANSWER_SPAN_TYPE
+                        pos += 1
+                    tokens[index][pos] = LOCATE_TOKEN_ID
                     token_types[index][pos] = LOCATE_TOKEN_TYPE
                     qa_span_types[index][pos] = ANSWER_SPAN_TYPE
                     pos += 1
