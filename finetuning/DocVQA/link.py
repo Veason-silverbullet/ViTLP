@@ -292,6 +292,55 @@ def link_wo_whitespace(answer: str, ocr: list, normalized: bool=False):
     return None
 
 
+patch = {
+    "645": {
+        "TYPE": "answer_with_bbox",
+        "image": "documents/mtyj0226_16.png",
+        "questionId": 645,
+        "question": "what is the average intake of sodium in US?",
+        "answer": "3,000-5,000 milligrams per day",
+        "bboxes": [
+            [
+                [
+                    232,
+                    504,
+                    360,
+                    517
+                ],
+                "3,000-5,000"
+            ],
+            [
+                [
+                    58,
+                    517,
+                    175,
+                    530
+                ],
+                "milligrams"
+            ],
+            [
+                [
+                    181,
+                    520,
+                    219,
+                    530
+                ],
+                "per"
+            ],
+            [
+                [
+                    224,
+                    517,
+                    265,
+                    530
+                ],
+                "day"
+            ]
+        ]
+    }
+}
+
+
 if __name__ == '__main__':
     with open('train_v1.0_withQT.json', 'r', encoding='utf-8') as f:
         data = json.load(f)['data']
@@ -498,7 +547,9 @@ if __name__ == '__main__':
                 if linked_span is not None:
                     break
 
-        if linked_span is not None:
+        if str(questionId) in patch:
+            metadata.append(patch[str(questionId)])
+        elif linked_span is not None:
             if linked_span[0] is not None:
                 metadata.append({
                     'TYPE': 'answer_with_bbox',
