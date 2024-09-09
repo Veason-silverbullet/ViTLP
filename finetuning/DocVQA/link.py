@@ -4,50 +4,95 @@ import re
 import editdistance
 from copy import deepcopy
 from tqdm import tqdm
-BIN_SIZE = 1000
-OCRS = ['ViTLP-OCR', 'Paddle-OCR', 'MS-OCR', 'ViTLP-OCR-augmented', 'ViTLP-OCR-early_stopping', 'ViTLP-OCR-augmented-early_stopping']
-images = []
-with open('images.txt', 'r', encoding='utf-8') as f:
-    for line in f:
-        image = line.strip()
-        if len(image) > 0:
-            assert image.endswith('.png')
-            images.append(image)
-for OCR in OCRS:
-    if not os.path.exists(OCR + '-split'):
-        os.mkdir(OCR + '-split')
-    for image in images:
-        with open(os.path.join(OCR, image[:-4] + '.json'), 'r', encoding='utf-8') as f:
-            data = []
-            for item in json.load(f):
-                bbox, word = item
-                if '//' in word or '/' not in word:
-                    data.append(item)
-                else:
-                    w1, h1, w2, h2 = bbox
-                    w = w2 - w1
-                    s = ''
-                    sub_words = []
-                    for c in word:
-                        if c == '/':
-                            if s != '':
-                                sub_words.append(s)
-                                s = ''
-                            sub_words.append('/')
-                        else:
-                            s += c
-                    if s != '':
-                        sub_words.append(s)
-                    M = len(sub_words)
-                    lens = [0 for _ in range(M + 1)]
-                    for i in range(1, M + 1):
-                        lens[i] = len(sub_words[i - 1])
-                    _len_ = len(word)
-                    for i in range(M):
-                        data.append([[int(w1 + lens[i] / _len_ * w), h1, int(w1 + lens[i + 1] / _len_ * w), h2], sub_words[i]])
-            with open(os.path.join(OCR + '-split', image[:-4] + '.json'), 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-OCRS += list(map(lambda x: x + '-split', OCRS))
+if not os.path.exists('ocr-cache.json'):
+    OCRS = ['ViTLP-OCR', 'Paddle-OCR', 'MS-OCR', 'ViTLP-OCR-augmented', 'ViTLP-OCR-early_stopping', 'ViTLP-OCR-augmented-early_stopping']
+    images = []
+    with open('images.txt', 'r', encoding='utf-8') as f:
+        for line in f:
+            image = line.strip()
+            if len(image) > 0:
+                assert image.endswith('.png')
+                images.append(image)
+    for OCR in OCRS:
+        if not os.path.exists(OCR + '-split'):
+            os.mkdir(OCR + '-split')
+        for image in images:
+            with open(os.path.join(OCR, image[:-4] + '.json'), 'r', encoding='utf-8') as f:
+                data = []
+                for item in json.load(f):
+                    bbox, word = item
+                    word = word.strip()
+                    if '//' in word or '/' not in word:
+                        data.append(item)
+                    else:
+                        w1, h1, w2, h2 = bbox
+                        w = w2 - w1
+                        s = ''
+                        sub_words = []
+                        for c in word:
+                            if c == '/':
+                                if s != '':
+                                    sub_words.append(s)
+                                    s = ''
+                                sub_words.append('/')
+                            else:
+                                s += c
+                        if s != '':
+                            sub_words.append(s)
+                        M = len(sub_words)
+                        lens = [0 for _ in range(M + 1)]
+                        for i in range(1, M + 1):
+                            lens[i] = len(sub_words[i - 1])
+                        _len_ = len(word)
+                        for i in range(M):
+                            data.append([[int(w1 + lens[i] * w / _len_), h1, int(w1 + lens[i + 1] * w / _len_), h2], sub_words[i]])
+                with open(os.path.join(OCR + '-split', image[:-4] + '.json'), 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=4)
+    OCRS += list(map(lambda x: x + '-split', OCRS))
+    ocr_cache = {}
+    for ocr_root in OCRS:
+        for image in images:
+            ocr = []
+            with open(os.path.join(ocr_root, image[:-len('.png')] + '.json'), 'r', encoding='utf-8') as f:
+                for item in filter(lambda x: len(x[1].strip()) > 0, json.load(f)):
+                    bbox, word = item
+                    word = word.strip()
+                    if ' ' not in word:
+                        ocr.append(item)
+                    else:
+                        w1, h1, w2, h2 = bbox
+                        w = w2 - w1
+                        s = ''
+                        sub_words = []
+                        for c in word:
+                            if c == ' ':
+                                if s != '':
+                                    sub_words.append(s)
+                                    s = ''
+                                sub_words.append(' ')
+                            else:
+                                s += c
+                        if s != '':
+                            sub_words.append(s)
+                        M = len(sub_words)
+                        lens = [0 for _ in range(M + 1)]
+                        for i in range(1, M + 1):
+                            lens[i] = len(sub_words[i - 1])
+                        _len_ = len(word)
+                        for i in range(M):
+                            if len(sub_words[i].strip()) > 0:
+                                ocr.append([[int(w1 + lens[i] * w / _len_), h1, int(w1 + lens[i + 1] * w / _len_), h2], sub_words[i]])
+            ocr_cache[ocr_root + image] = ocr
+    with open('ocr-cache.json', 'w', encoding='utf-8') as f:
+        json.dump({
+            'OCRS': OCRS,
+            'ocr_cache': ocr_cache
+        }, f)
+else:
+    with open('ocr-cache.json', 'r', encoding='utf-8') as f:
+        ocr_cache_data = json.load(f)
+    OCRS = ocr_cache_data['OCRS']
+    ocr_cache = ocr_cache_data['ocr_cache']
 
 
 def str_eq(s1_: str, s2_: str) -> bool:
@@ -77,8 +122,8 @@ def formalize(s: str) -> str:
     while s.endswith(' .'):
         s = s[:-2] + '.'
     s = s.replace('in19', 'in 19').replace('in20', 'in 20').replace(' the the ', ' the ').replace(' of of ', ' of ').replace(' are are ', ' are ')
-    for month in ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']:
-        for i in range(10):
+    for month in ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Sept', 'Oct', 'Nov', 'Dec']:
+        for i in range(32):
             s = s.replace(month + ',' + str(i), month + ', ' + str(i))
     if not s.endswith(' the\''):
         s = s.replace(' the\'', ' the \'')
@@ -97,26 +142,31 @@ def link(answer: str, ocr: list, normalized: bool=False, indexing: bool=False):
     link_spans = []
     if n >= m:
         for i in range(n - m):
+            flag = True
             for j in range(i, i + m):
                 if j != i + m - 1:
                     if not normalized:
                         if not str_eq(ocr[j][1], answer_words[j - i]):
+                            flag = False
                             break
                     else:
                         if not str_eq(ocr[j][1].lower(), answer_words[j - i].lower()):
+                            flag = False
                             break
                 else:
                     if not normalized:
-                        if (not str_eq(ocr[j][1], answer_words[j - i])) and not (ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
+                        if (not str_eq(ocr[j][1], answer_words[j - i])) and not (answer_words[j - i][-1] not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
+                            flag = False
                             break
-                        if ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i]):
+                        if (not str_eq(ocr[j][1], answer_words[j - i])) and (answer_words[j - i][-1] not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
                             ocr[j][1] = ocr[j][1][:-1]
                     else:
-                        if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and not (ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
+                        if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and not (answer_words[j - i][-1].lower() not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
+                            flag = False
                             break
-                        if ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower()):
+                        if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and (answer_words[j - i][-1].lower() not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
                             ocr[j][1] = ocr[j][1][:-1]
-            else:
+            if flag:
                 if not indexing:
                     link_spans.append(ocr[i: i + m])
                 else:
@@ -130,32 +180,37 @@ def link(answer: str, ocr: list, normalized: bool=False, indexing: bool=False):
         if _answer_word_[0] != delimiter:
             answer_words[0] = delimiter + _answer_word_
             for i in range(n - m):
+                flag = True
                 for j in range(i, i + m):
                     if j != i + m - 1:
                         if not normalized:
                             if not str_eq(ocr[j][1], answer_words[j - i]):
+                                flag = False
                                 break
                         else:
                             if not str_eq(ocr[j][1].lower(), answer_words[j - i].lower()):
+                                flag = False
                                 break
                     else:
                         if not normalized:
-                            if (not str_eq(ocr[j][1], answer_words[j - i])) and (not (ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i]))):
+                            if (not str_eq(ocr[j][1], answer_words[j - i])) and not (answer_words[j - i][-1] not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
+                                flag = False
                                 break
-                            if ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i]):
+                            if (not str_eq(ocr[j][1], answer_words[j - i])) and (answer_words[j - i][-1] not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
                                 ocr[j][1] = ocr[j][1][:-1]
                         else:
-                            if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and (not (ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower()))):
+                            if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and not (answer_words[j - i][-1].lower() not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
+                                flag = False
                                 break
-                            if ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower()):
+                            if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and (answer_words[j - i][-1].lower() not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
                                 ocr[j][1] = ocr[j][1][:-1]
-                else:
+                if flag:
                     if not indexing:
                         link_spans.append(ocr[i: i + m])
                         link_spans[-1][0][1] = link_spans[-1][0][1][1:]
                     else:
                         link_spans.append([ocr[i: i + m], [i, i + m - 1]])
-                        link_spans[-1][0][1][0] = link_spans[-1][0][1][0][1:]
+                        link_spans[-1][0][0][1] = link_spans[-1][0][0][1][1:]
             if len(link_spans) >= 1:
                 return link_spans
     return None
@@ -253,6 +308,7 @@ if __name__ == '__main__':
             if answers[i] == '11-Dcc-95': # patch
                 answers[i] = '11-Dec-95'
         assert image.startswith('documents/') and image.endswith('.png'), image
+        image = image[len('documents/'):]
 
         if any([answer.strip().lower() in ['yes.', 'yes'] for answer in answers]):
             linked_span = [None, '[ANS_YES]']
@@ -265,11 +321,9 @@ if __name__ == '__main__':
         if linked_span is None:
             cache_spans = []
             for ocr_root in OCRS:
-                ocr_file = os.path.join(ocr_root, image[len('documents/'): -len('.png')] + '.json')
-                with open(ocr_file, 'r', encoding='utf-8') as f:
-                    ocr = list(filter(lambda x: len(x[1].strip()) > 0, json.load(f)))
+                ocr = ocr_cache[ocr_root + image]
                 for answer in answers:
-                    linked_span_ = link(answer, ocr)
+                    linked_span_ = link(answer, deepcopy(ocr))
                     if linked_span_ is not None:
                         if len(linked_span_) == 1:
                             linked_span = [linked_span_[0], answer]
@@ -286,11 +340,9 @@ if __name__ == '__main__':
         # Phase 2: Native link without white space
         if linked_span is None:
             for ocr_root in OCRS:
-                ocr_file = os.path.join(ocr_root, image[len('documents/'): -len('.png')] + '.json')
-                with open(ocr_file, 'r', encoding='utf-8') as f:
-                    ocr = list(filter(lambda x: len(x[1].strip()) > 0, json.load(f)))
+                ocr = ocr_cache[ocr_root + image]
                 for answer in answers:
-                    linked_span_ = link_wo_whitespace(answer, ocr)
+                    linked_span_ = link_wo_whitespace(answer, deepcopy(ocr))
                     if linked_span_ is not None:
                         if len(linked_span_) == 1:
                             linked_span = [linked_span_[0], answer]
@@ -307,9 +359,7 @@ if __name__ == '__main__':
         # Phase 3: Cross link
         if linked_span is None:
             for ocr_root in OCRS:
-                ocr_file = os.path.join(ocr_root, image[len('documents/'): -len('.png')] + '.json')
-                with open(ocr_file, 'r', encoding='utf-8') as f:
-                    ocr = list(filter(lambda x: len(x[1].strip()) > 0, json.load(f)))
+                ocr = ocr_cache[ocr_root + image]
                 for answer in answers:
                     answer_words = answer.split(' ')
                     M = len(answer_words)
@@ -318,8 +368,8 @@ if __name__ == '__main__':
                         for i in range(2, M - 2):
                             answer_span1 = ' '.join(answer_words[:i]).strip()
                             answer_span2 = ' '.join(answer_words[i:]).strip()
-                            linked_span1 = link(answer_span1, ocr, normalized=False, indexing=True)
-                            linked_span2 = link(answer_span2, ocr, normalized=False, indexing=True)
+                            linked_span1 = link(answer_span1, deepcopy(ocr), normalized=False, indexing=True)
+                            linked_span2 = link(answer_span2, deepcopy(ocr), normalized=False, indexing=True)
                             if linked_span1 is not None and linked_span2 is not None:
                                 N1, N2 = len(linked_span1), len(linked_span2)
                                 if (M > 4 and (N1 == 1 or N2 == 1)) or (M == 4 and N1 == 1 and N2 == 1):
@@ -361,11 +411,9 @@ if __name__ == '__main__':
         # Phase 4: Normalized link
         if linked_span is None:
             for ocr_root in OCRS:
-                ocr_file = os.path.join(ocr_root, image[len('documents/'): -len('.png')] + '.json')
-                with open(ocr_file, 'r', encoding='utf-8') as f:
-                    ocr = list(filter(lambda x: len(x[1].strip()) > 0, json.load(f)))
+                ocr = ocr_cache[ocr_root + image]
                 for answer in answers:
-                    linked_span_ = link(answer, ocr, normalized=True)
+                    linked_span_ = link(answer, deepcopy(ocr), normalized=True)
                     if linked_span_ is not None:
                         if len(linked_span_) == 1:
                             linked_span = [linked_span_[0], answer]
@@ -382,11 +430,9 @@ if __name__ == '__main__':
         # Phase 5: Normalized link without white space
         if linked_span is None:
             for ocr_root in OCRS:
-                ocr_file = os.path.join(ocr_root, image[len('documents/'): -len('.png')] + '.json')
-                with open(ocr_file, 'r', encoding='utf-8') as f:
-                    ocr = list(filter(lambda x: len(x[1].strip()) > 0, json.load(f)))
+                ocr = ocr_cache[ocr_root + image]
                 for answer in answers:
-                    linked_span_ = link_wo_whitespace(answer, ocr, normalized=True)
+                    linked_span_ = link_wo_whitespace(answer, deepcopy(ocr), normalized=True)
                     if linked_span_ is not None:
                         if len(linked_span_) == 1:
                             linked_span = [linked_span_[0], answer]
@@ -403,9 +449,7 @@ if __name__ == '__main__':
         # Phase 6: Normalized cross link
         if linked_span is None:
             for ocr_root in OCRS:
-                ocr_file = os.path.join(ocr_root, image[len('documents/'): -len('.png')] + '.json')
-                with open(ocr_file, 'r', encoding='utf-8') as f:
-                    ocr = list(filter(lambda x: len(x[1].strip()) > 0, json.load(f)))
+                ocr = ocr_cache[ocr_root + image]
                 for answer in answers:
                     answer_words = answer.split(' ')
                     M = len(answer_words)
@@ -414,8 +458,8 @@ if __name__ == '__main__':
                         for i in range(2, M - 2):
                             answer_span1 = ' '.join(answer_words[:i]).strip()
                             answer_span2 = ' '.join(answer_words[i:]).strip()
-                            linked_span1 = link(answer_span1, ocr, normalized=True, indexing=True)
-                            linked_span2 = link(answer_span2, ocr, normalized=True, indexing=True)
+                            linked_span1 = link(answer_span1, deepcopy(ocr), normalized=True, indexing=True)
+                            linked_span2 = link(answer_span2, deepcopy(ocr), normalized=True, indexing=True)
                             if linked_span1 is not None and linked_span2 is not None:
                                 N1, N2 = len(linked_span1), len(linked_span2)
                                 if N1 == 1 and N2 == 1:
@@ -458,7 +502,7 @@ if __name__ == '__main__':
             if linked_span[0] is not None:
                 metadata.append({
                     'TYPE': 'answer_with_bbox',
-                    'image': image,
+                    'image': 'documents/' + image,
                     'questionId': questionId,
                     'question': question,
                     'answer': linked_span[1],
@@ -468,7 +512,7 @@ if __name__ == '__main__':
             else:
                 metadata.append({
                     'TYPE': 'yes_no_answer',
-                    'image': image,
+                    'image': 'documents/' + image,
                     'questionId': questionId,
                     'question': question,
                     'answer': linked_span[1]
@@ -479,7 +523,7 @@ if __name__ == '__main__':
             answer_words = answers[0].strip().split(' ')
             metadata.append({
                 'TYPE': 'answer_without_bbox',
-                'image': image,
+                'image': 'documents/' + image,
                 'questionId': questionId,
                 'question': question,
                 'answer_words': answer_words

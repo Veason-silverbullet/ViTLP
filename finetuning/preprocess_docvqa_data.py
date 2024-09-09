@@ -111,8 +111,21 @@ def process_docvqa_train_data(data_dir):
                     pos += 1
             else: # A workaround to incorporate more training samples that cannot be linked with bounding boxes
                 assert item['TYPE'] == 'answer_without_bbox', item['TYPE']
-                for word in item['answer_words']:
-                    answer_tokens = tokenizer.encode(' ' + word, add_special_tokens=False)
+                if USE_WORD_BBOX:
+                    for word in item['answer_words']:
+                        answer_tokens = tokenizer.encode(' ' + word, add_special_tokens=False)
+                        for token in answer_tokens:
+                            assert token != LOCATE_TOKEN_ID
+                            tokens[index][pos] = token
+                            token_types[index][pos] = WORD_TOKEN_TYPE
+                            qa_span_types[index][pos] = ANSWER_SPAN_TYPE
+                            pos += 1
+                        tokens[index][pos] = LOCATE_TOKEN_ID
+                        token_types[index][pos] = LOCATE_TOKEN_TYPE
+                        qa_span_types[index][pos] = ANSWER_SPAN_TYPE
+                        pos += 1
+                else:
+                    answer_tokens = tokenizer.encode(' '.join(item['answer_words']), add_special_tokens=False)
                     for token in answer_tokens:
                         assert token != LOCATE_TOKEN_ID
                         tokens[index][pos] = token

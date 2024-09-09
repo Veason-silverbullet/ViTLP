@@ -23,7 +23,7 @@ nohup.*
 /finetuning/DocVQA/*.zip
 /finetuning/DocVQA/*_ocr.py
 /finetuning/DocVQA/*_ocr*.py
-/finetuning/DocVQA/*_ocr*.py
+/finetuning/DocVQA/ocr-cache.json
 /finetuning/DocVQA/console.py
 /finetuning/DocVQA/console-augmented.py
 /finetuning/DocVQA/spdocvqa_images.tar.gz
