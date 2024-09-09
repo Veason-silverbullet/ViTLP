@@ -155,16 +155,16 @@ def link(answer: str, ocr: list, normalized: bool=False, indexing: bool=False):
                             break
                 else:
                     if not normalized:
-                        if (not str_eq(ocr[j][1], answer_words[j - i])) and not (answer_words[j - i][-1] not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
+                        if (not str_eq(ocr[j][1], answer_words[j - i])) and not (answer_words[j - i][-1] != ocr[j][1][-1] and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
                             flag = False
                             break
-                        if (not str_eq(ocr[j][1], answer_words[j - i])) and (answer_words[j - i][-1] not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
+                        if (not str_eq(ocr[j][1], answer_words[j - i])) and (answer_words[j - i][-1] != ocr[j][1][-1] and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
                             ocr[j][1] = ocr[j][1][:-1]
                     else:
-                        if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and not (answer_words[j - i][-1].lower() not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
+                        if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and not (answer_words[j - i][-1] != ocr[j][1][-1] and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
                             flag = False
                             break
-                        if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and (answer_words[j - i][-1].lower() not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
+                        if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and (answer_words[j - i][-1] != ocr[j][1][-1] and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
                             ocr[j][1] = ocr[j][1][:-1]
             if flag:
                 if not indexing:
@@ -193,16 +193,16 @@ def link(answer: str, ocr: list, normalized: bool=False, indexing: bool=False):
                                 break
                     else:
                         if not normalized:
-                            if (not str_eq(ocr[j][1], answer_words[j - i])) and not (answer_words[j - i][-1] not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
+                            if (not str_eq(ocr[j][1], answer_words[j - i])) and not (answer_words[j - i][-1] != ocr[j][1][-1] and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
                                 flag = False
                                 break
-                            if (not str_eq(ocr[j][1], answer_words[j - i])) and (answer_words[j - i][-1] not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
+                            if (not str_eq(ocr[j][1], answer_words[j - i])) and (answer_words[j - i][-1] != ocr[j][1][-1] and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1], answer_words[j - i])):
                                 ocr[j][1] = ocr[j][1][:-1]
                         else:
-                            if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and not (answer_words[j - i][-1].lower() not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
+                            if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and not (answer_words[j - i][-1] != ocr[j][1][-1] and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
                                 flag = False
                                 break
-                            if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and (answer_words[j - i][-1].lower() not in ',.;:\"\'?)]' and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
+                            if (not str_eq(ocr[j][1].lower(), answer_words[j - i].lower())) and (answer_words[j - i][-1] != ocr[j][1][-1] and ocr[j][1][-1] in ',.;:\"\'?)]' and str_eq(ocr[j][1][:-1].lower(), answer_words[j - i].lower())):
                                 ocr[j][1] = ocr[j][1][:-1]
                 if flag:
                     if not indexing:
