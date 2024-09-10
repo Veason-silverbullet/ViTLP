@@ -78,14 +78,15 @@ class DocVQATrainDataset(Dataset):
 
     def __getitem__(self, idx):
         labels = self.labels[idx]
-        n1 = (labels == self.LOCATE_ID).astype(np.float32).sum()
+        bboxes = self.bboxes[idx]
+        n1 = (bboxes[:, 0] != self.IGNORE_INDEX).astype(np.float32).sum()
         n2 = (labels != self.IGNORE_INDEX).astype(np.float32).sum()
         sample = {
             'image': self.vitFeatureExtractor(Image.open(self.image_map[idx]).convert('RGB')),
             'decoder_input_ids': self.decoder_input_ids[idx],
             'decoder_input_bboxes': self.decoder_input_bboxes[idx],
             'labels': labels,
-            'bboxes': self.bboxes[idx],
+            'bboxes': bboxes,
             'n1': n1,
             'n2': n2
         }

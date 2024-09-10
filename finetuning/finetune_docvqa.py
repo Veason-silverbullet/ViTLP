@@ -75,7 +75,7 @@ def train(args):
     iteration = 0
     if args.is_main_process:
         writer = SummaryWriter(log_dir=args.output_dir, filename_suffix='.training-log')
-        iteration_lm_loss, iteration_locate_loss, iteration_loss = 0, 0, 0
+        iteration_lm_loss, iteration_locate_loss, iteration_loss, locate_loss_skip = 0, 0, 0, 0
     with open(args.deepspeed_config, 'r', encoding='utf-8') as f:
         deepspeed_config = json.load(f)
     gradient_accumulation_steps = deepspeed_config['gradient_accumulation_steps'] if 'gradient_accumulation_steps' in deepspeed_config else 1
@@ -90,7 +90,9 @@ def train(args):
         for batch in train_dataloader:
             n1 = batch['n1']
             n2 = batch['n2']
-            alpha = (n1.sum() / n2.sum())
+            N1 = n1.sum().item()
+            N2 = n2.sum().item()
+            alpha = N1 / N2
             del batch['n1']
             del batch['n2']
             batch = tuple(t.cuda(non_blocking=True) for t in batch.values())
@@ -103,27 +105,35 @@ def train(args):
             }
             with autocast():
                 lm_loss, locate_loss = model(**inputs)
-                loss = lm_loss + locate_loss * alpha
+                if N1 != 0:
+                    loss = lm_loss + locate_loss * alpha
+                else:
+                    loss = lm_loss
+                    if args.is_main_process:
+                        locate_loss = 0
+                        locate_loss_skip += 1
             model.backward(loss)
             model.step()
 
             iteration += 1
             if args.is_main_process:
                 iteration_lm_loss += lm_loss.item()
-                iteration_locate_loss += locate_loss.item()
+                iteration_locate_loss += locate_loss.item() if locate_loss != 0 else 0
                 iteration_loss += loss.item()
                 if args.log_interval > 0 and iteration % args.log_interval == 0:
                     iteration_loss /= args.log_interval
                     iteration_lm_loss /= args.log_interval
-                    iteration_locate_loss /= args.log_interval
+                    if args.log_interval > locate_loss_skip:
+                        iteration_locate_loss /= args.log_interval - locate_loss_skip
                     print('Iteration %d: lr = %.6f\tloss = %.3f\tlm_loss = %.3f\tlocate_loss = %.3f' % (iteration // gradient_accumulation_steps, lr_scheduler._last_lr[0], iteration_loss, iteration_lm_loss, iteration_locate_loss))
                     writer.add_scalar('Iteration loss', iteration_loss, iteration // gradient_accumulation_steps)
                     writer.add_scalar('Iteration lm_loss', iteration_lm_loss, iteration // gradient_accumulation_steps)
                     writer.add_scalar('Iteration locate_loss', iteration_locate_loss, iteration // gradient_accumulation_steps)
-                    iteration_lm_loss, iteration_locate_loss, iteration_loss = 0, 0, 0
+                    iteration_lm_loss, iteration_locate_loss, iteration_loss, locate_loss_skip = 0, 0, 0, 0
             if args.save_iteration > 0 and iteration % args.save_iteration == 0:
                 save_checkpoint(model, os.path.join(args.output_dir, 'iteration-' + str(iteration // gradient_accumulation_steps)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
-        save_checkpoint(model, os.path.join(args.output_dir, 'epoch-' + str(epoch_index)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
+        if epoch_index % args.save_epoch == 0 or epoch_index == args.epochs:
+            save_checkpoint(model, os.path.join(args.output_dir, 'epoch-' + str(epoch_index)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
     if args.is_main_process:
         writer.close()
 
@@ -141,6 +151,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', default='DocVQA-outputs', type=str)
     parser.add_argument('--log_interval', default=1, type=int)
     parser.add_argument('--save_iteration', default=1000, type=int)
+    parser.add_argument('--save_epoch', default=2, type=int)
     parser.add_argument('--deepspeed_config', default='misc/zero1_fp16.json', type=str)
     parser.add_argument('--learning_rate', default=4e-5, type=float)
     parser.add_argument('--weight_decay', default=1e-4, type=float)

@@ -119,7 +119,8 @@ def train(args):
                     iteration_lm_loss, iteration_locate_loss, iteration_loss = 0, 0, 0
             if args.save_iteration > 0 and iteration % args.save_iteration == 0:
                 save_checkpoint(model, os.path.join(args.output_dir, 'iteration-' + str(iteration // gradient_accumulation_steps)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
-        save_checkpoint(model, os.path.join(args.output_dir, 'epoch-' + str(epoch_index)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
+        if epoch_index % args.save_epoch == 0 or epoch_index == args.epochs:
+            save_checkpoint(model, os.path.join(args.output_dir, 'epoch-' + str(epoch_index)), args.is_main_process, os.path.join(args.checkpoint, 'config.json'))
     if args.is_main_process:
         writer.close()
 
@@ -135,6 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', default='outputs', type=str)
     parser.add_argument('--log_interval', default=1, type=int)
     parser.add_argument('--save_iteration', default=1000, type=int)
+    parser.add_argument('--save_epoch', default=2, type=int)
     parser.add_argument('--deepspeed_config', default='misc/zero1_fp16.json', type=str)
     parser.add_argument('--learning_rate', default=1e-4, type=float)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
